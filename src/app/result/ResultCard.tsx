@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getTier } from "@/lib/tests";
 import { calcPercentile, type FogStats } from "@/lib/redis";
+import { getHistory, getStreak, type HistoryEntry } from "@/lib/history";
 
 export default function ResultCard() {
   const params = useSearchParams();
@@ -13,12 +14,17 @@ export default function ResultCard() {
   const isShared = params.get("shared") === "1";
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<FogStats | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [streak, setStreak] = useState({ count: 0, active: false });
 
   useEffect(() => {
     fetch("/api/stats")
       .then((r) => r.json())
       .then((s: FogStats) => { if (s.total >= 5) setStats(s); })
       .catch(() => {});
+    const h = getHistory();
+    setHistory(h);
+    setStreak(getStreak());
   }, []);
 
   function copyLink() {
@@ -78,15 +84,29 @@ export default function ResultCard() {
           boxShadow: `0 0 48px ${tier.color}20`,
           marginBottom: 24,
         }}>
-          {/* Badge */}
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)",
-            borderRadius: 100, padding: "5px 16px", marginBottom: 24,
-          }}>
-            <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 800, letterSpacing: "3px", textTransform: "uppercase" }}>
-              {isShared ? "Their Cognitive Load" : "Cognitive Load Report"}
-            </span>
+          {/* Badges row */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)",
+              borderRadius: 100, padding: "5px 16px",
+            }}>
+              <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 800, letterSpacing: "3px", textTransform: "uppercase" }}>
+                {isShared ? "Their Cognitive Load" : "Cognitive Load Report"}
+              </span>
+            </div>
+            {!isShared && streak.count >= 2 && (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)",
+                borderRadius: 100, padding: "5px 14px",
+              }}>
+                <span style={{ fontSize: 14 }}>🔥</span>
+                <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 800 }}>
+                  Day {streak.count} streak
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Big score */}
@@ -158,8 +178,53 @@ export default function ResultCard() {
             </div>
           </div>
 
+          {/* History sparkline — only shown to the person who took the test */}
+          {!isShared && history.length >= 2 && (() => {
+            const recent = history.slice(0, 7).reverse(); // oldest → newest (current is last)
+            const prev = history[1]; // history[0] is current, [1] is previous
+            const delta = score - prev.score;
+            const tierColor = (s: number) =>
+              s >= 80 ? "#10b981" : s >= 60 ? "#f59e0b" : s >= 40 ? "#f97316" : "#ef4444";
+            return (
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 2 }}>
+                    Your history
+                  </span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 800,
+                    color: delta >= 0 ? "#10b981" : "#ef4444",
+                  }}>
+                    {delta >= 0 ? "↑" : "↓"} {Math.abs(delta)} pts from last session
+                  </span>
+                </div>
+                {/* Sparkline bars */}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 44, justifyContent: "center" }}>
+                  {recent.map((entry, i) => {
+                    const isCurrent = i === recent.length - 1;
+                    return (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <div style={{
+                          width: isCurrent ? 18 : 14,
+                          height: Math.max(6, Math.round(entry.score * 0.38)),
+                          background: isCurrent ? tierColor(entry.score) : tierColor(entry.score) + "80",
+                          borderRadius: 3,
+                          border: isCurrent ? `2px solid ${tierColor(entry.score)}` : "none",
+                          transition: "height 0.4s ease",
+                        }} />
+                        <span style={{ fontSize: 9, color: isCurrent ? tierColor(entry.score) : "var(--muted)", fontWeight: isCurrent ? 900 : 600 }}>
+                          {entry.score}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Watermark */}
-          <div style={{ marginTop: 24, fontSize: 12, color: "var(--muted)" }}>
+          <div style={{ marginTop: 20, fontSize: 12, color: "var(--muted)" }}>
             fogcheck.vercel.app · {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </div>
         </div>
@@ -198,7 +263,11 @@ export default function ResultCard() {
                 {copied ? "✓ Link copied!" : "🔗 Copy link"}
               </button>
               <Link href="/test" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
-                Test again
+                {history.length >= 2 && history[1].score < score
+                  ? `Test again — beat your ${history[1].score}% →`
+                  : history.length >= 2 && history[1].score > score
+                  ? `Try again — recover your ${history[1].score}% →`
+                  : "Test again"}
               </Link>
               <Link href="/" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
                 ← Home

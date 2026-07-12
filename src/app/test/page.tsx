@@ -6,6 +6,7 @@ import {
   calcScore, getTier,
   type BugspotTask, type DecisionTask,
 } from "@/lib/tests";
+import { saveResult } from "@/lib/history";
 
 type Phase =
   | "aiHours"
@@ -96,6 +97,8 @@ export default function TestPage() {
     const decScore = (correct / decisionTasks.current.length) * 0.8 + speedBonus;
     const total = calcScore({ memoryScore: memScore, bugScore, decisionScore: decScore, aiHours, durationMs: Date.now() - startMs.current });
     const tier = getTier(total);
+    // Save to localStorage for local history + streak
+    saveResult(total, tier.label, aiHours);
     // Fire-and-forget: record anonymous result for live stats
     fetch("/api/submit", {
       method: "POST",
