@@ -1,5 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { getTier } from "@/lib/tests";
 
@@ -8,6 +9,15 @@ export default function ResultCard() {
   const score = parseInt(params.get("s") ?? "0", 10);
   const aiHours = params.get("ai") ?? "";
   const tier = getTier(score);
+  const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   const shareText = `My AI cognitive load score: ${score}% — ${tier.emoji} ${tier.label}\n\nAfter ${aiHours} of AI coding tools.\n\nTest yours (90 seconds, no signup):`;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -105,6 +115,13 @@ export default function ResultCard() {
           >
             𝕏 Share on X
           </a>
+          <button
+            onClick={copyLink}
+            className="btn-ghost"
+            style={{ width: "100%", fontSize: 16, cursor: "pointer" }}
+          >
+            {copied ? "✓ Link copied!" : "🔗 Copy link"}
+          </button>
           <Link href="/test" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
             Test again
           </Link>
