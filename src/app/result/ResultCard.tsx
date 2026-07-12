@@ -1,8 +1,9 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getTier } from "@/lib/tests";
+import { calcPercentile, type FogStats } from "@/lib/redis";
 
 export default function ResultCard() {
   const params = useSearchParams();
@@ -11,6 +12,14 @@ export default function ResultCard() {
   const tier = getTier(score);
   const isShared = params.get("shared") === "1";
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState<FogStats | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((s: FogStats) => { if (s.total >= 5) setStats(s); })
+      .catch(() => {});
+  }, []);
 
   function copyLink() {
     if (typeof window === "undefined") return;
@@ -102,6 +111,25 @@ export default function ResultCard() {
           <p style={{ fontSize: 16, lineHeight: 1.6, color: "var(--text)", fontWeight: 600, margin: 0 }}>
             {tier.advice}
           </p>
+
+          {/* Live percentile */}
+          {stats && (() => {
+            const pct = calcPercentile(score, stats);
+            return pct >= 0 ? (
+              <div style={{
+                marginTop: 20,
+                background: "rgba(34,211,238,0.08)",
+                border: "1px solid rgba(34,211,238,0.2)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "#22d3ee",
+                fontWeight: 700,
+              }}>
+                📊 You scored higher than {pct}% of {stats.total.toLocaleString()} developers
+              </div>
+            ) : null;
+          })()}
 
           {/* Score bar */}
           <div style={{ marginTop: 28 }}>

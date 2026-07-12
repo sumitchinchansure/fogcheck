@@ -96,6 +96,12 @@ export default function TestPage() {
     const decScore = (correct / decisionTasks.current.length) * 0.8 + speedBonus;
     const total = calcScore({ memoryScore: memScore, bugScore, decisionScore: decScore, aiHours, durationMs: Date.now() - startMs.current });
     const tier = getTier(total);
+    // Fire-and-forget: record anonymous result for live stats
+    fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score: total, tier: tier.label }),
+    }).catch(() => {});
     router.push(`/result?s=${total}&ai=${encodeURIComponent(aiHours)}&tier=${encodeURIComponent(tier.label)}`);
   }, [phase]); // eslint-disable-line
 
