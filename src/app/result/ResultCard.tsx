@@ -9,23 +9,55 @@ export default function ResultCard() {
   const score = parseInt(params.get("s") ?? "0", 10);
   const aiHours = params.get("ai") ?? "";
   const tier = getTier(score);
+  const isShared = params.get("shared") === "1";
   const [copied, setCopied] = useState(false);
 
   function copyLink() {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (typeof window === "undefined") return;
+    const base = window.location.href.replace(/[&?]shared=1/, "");
+    const sep = base.includes("?") ? "&" : "?";
+    const url = `${base}${sep}shared=1`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }
 
+  const baseUrl = typeof window !== "undefined"
+    ? window.location.href.replace(/[&?]shared=1/, "")
+    : "";
   const shareText = `My AI cognitive load score: ${score}% — ${tier.emoji} ${tier.label}\n\nAfter ${aiHours} of AI coding tools.\n\nTest yours (90 seconds, no signup):`;
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(baseUrl)}`;
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 16px" }}>
       <div style={{ maxWidth: 500, width: "100%" }}>
+
+        {/* Shared banner — shown only when arriving via a shared link */}
+        {isShared && (
+          <div style={{
+            background: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            borderRadius: 16,
+            padding: "18px 24px",
+            marginBottom: 20,
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 13, color: "#a5b4fc", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 2 }}>
+              Someone shared their result
+            </div>
+            <div style={{ fontSize: 15, color: "var(--muted)", marginBottom: 14 }}>
+              How foggy is <em>your</em> brain after AI coding today?
+            </div>
+            <Link
+              href="/test"
+              className="btn-primary"
+              style={{ textDecoration: "none", display: "inline-block", padding: "10px 28px", fontSize: 15 }}
+            >
+              Take the 90-second test →
+            </Link>
+          </div>
+        )}
 
         {/* Score card */}
         <div style={{
@@ -44,7 +76,7 @@ export default function ResultCard() {
             borderRadius: 100, padding: "5px 16px", marginBottom: 24,
           }}>
             <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 800, letterSpacing: "3px", textTransform: "uppercase" }}>
-              Cognitive Load Report
+              {isShared ? "Their Cognitive Load" : "Cognitive Load Report"}
             </span>
           </div>
 
@@ -106,28 +138,45 @@ export default function ResultCard() {
 
         {/* Actions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <a
-            href={tweetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary"
-            style={{ textDecoration: "none", width: "100%", fontSize: 16 }}
-          >
-            𝕏 Share on X
-          </a>
-          <button
-            onClick={copyLink}
-            className="btn-ghost"
-            style={{ width: "100%", fontSize: 16, cursor: "pointer" }}
-          >
-            {copied ? "✓ Link copied!" : "🔗 Copy link"}
-          </button>
-          <Link href="/test" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
-            Test again
-          </Link>
-          <Link href="/" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
-            ← Home
-          </Link>
+          {isShared ? (
+            <>
+              <Link
+                href="/test"
+                className="btn-primary"
+                style={{ textDecoration: "none", width: "100%", fontSize: 16 }}
+              >
+                Test my own brain →
+              </Link>
+              <Link href="/" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
+                ← Home
+              </Link>
+            </>
+          ) : (
+            <>
+              <a
+                href={tweetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+                style={{ textDecoration: "none", width: "100%", fontSize: 16 }}
+              >
+                𝕏 Share on X
+              </a>
+              <button
+                onClick={copyLink}
+                className="btn-ghost"
+                style={{ width: "100%", fontSize: 16, cursor: "pointer" }}
+              >
+                {copied ? "✓ Link copied!" : "🔗 Copy link"}
+              </button>
+              <Link href="/test" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
+                Test again
+              </Link>
+              <Link href="/" className="btn-ghost" style={{ width: "100%", textDecoration: "none" }}>
+                ← Home
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Tiers guide */}
