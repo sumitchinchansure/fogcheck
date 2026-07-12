@@ -90,7 +90,7 @@ export default function ResultCard() {
 
           {/* Watermark */}
           <div style={{ marginTop: 24, fontSize: 12, color: "var(--muted)" }}>
-            fogcheck.ai · {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            fogcheck.vercel.app · {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </div>
         </div>
 
