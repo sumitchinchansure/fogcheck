@@ -2,9 +2,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MEMORY_TASK, pickBugspotTask, pickDecisionTasks,
+  pickMemoryTask, pickBugspotTask, pickDecisionTasks,
   calcScore, getTier,
-  type BugspotTask, type DecisionTask,
+  type MemoryTask, type BugspotTask, type DecisionTask,
 } from "@/lib/tests";
 import { saveResult } from "@/lib/history";
 
@@ -30,6 +30,7 @@ export default function TestPage() {
   const [wordInput, setWordInput] = useState("");
   const [distractorInput, setDistractorInput] = useState("");
 
+  const memoryTask = useRef<MemoryTask>(pickMemoryTask());
   const bugTask = useRef<BugspotTask>(pickBugspotTask());
   const [selectedBugLine, setSelectedBugLine] = useState<number | null>(null);
   const [bugSubmitted, setBugSubmitted] = useState(false);
@@ -60,9 +61,9 @@ export default function TestPage() {
 
   const submitMemory = useCallback(() => {
     const words = wordInput.toLowerCase().split(/[\s,]+/).map(w => w.trim()).filter(Boolean);
-    const correct = words.filter(w => MEMORY_TASK.words.includes(w)).length;
+    const correct = words.filter(w => memoryTask.current.words.includes(w)).length;
     setRecalledWords(words);
-    setMemScore(correct / MEMORY_TASK.words.length);
+    setMemScore(correct / memoryTask.current.words.length);
     setPhase("bugspot");
   }, [wordInput]);
 
@@ -156,7 +157,7 @@ export default function TestPage() {
             <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Memorise these words</h2>
             <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 28 }}>Disappearing in {showTimer}s</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
-              {MEMORY_TASK.words.map(w => (
+              {memoryTask.current.words.map(w => (
                 <span key={w} style={{
                   padding: "10px 20px", borderRadius: 10,
                   background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
@@ -171,7 +172,7 @@ export default function TestPage() {
         {phase === "memoryDistract" && (
           <div className="card" style={{ textAlign: "center" }}>
             <div style={{ fontSize: 13, color: "var(--accent2)", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 16 }}>Quick distractor</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>{MEMORY_TASK.distractor.question}</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>{memoryTask.current.distractor.question}</h2>
             <input
               type="number"
               value={distractorInput}
